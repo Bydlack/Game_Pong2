@@ -19,6 +19,11 @@ public class GamePanel extends JPanel implements Runnable {
     static final int BRICK_HEIGHT = 25;
     static final double GAP = (GAME_WIDTH - (double)(BRICK_WIDTH*COLUMNS))/(COLUMNS -1);
 
+    public int gameState;
+    public final int playState = 0;
+    public final int gameOverState = 1;
+    boolean enterPressed = false;
+
     Thread gameThread;
     Image image;
     Graphics graphics;
@@ -28,15 +33,19 @@ public class GamePanel extends JPanel implements Runnable {
     Brick[] brick = new Brick[MAX_BRICKS];
 
     public GamePanel() {
-        newPaddle();
-        newBall();
-        newBrick();
+        newGame();
         this.setFocusable(true);
         this.addKeyListener(new AL());
         this.setPreferredSize(SCREEN_SIZE);
 
         gameThread = new Thread(this);
         gameThread.start();
+    }
+    public void newGame(){
+        gameState = playState;
+        newPaddle();
+        newBall();
+        newBrick();
     }
     public void newBrick() {
         int x = 0;
@@ -65,13 +74,22 @@ public class GamePanel extends JPanel implements Runnable {
         g.drawImage(image,0,0,this);
     }
     public void draw (Graphics g) {
-        paddle1.draw(g);
-        ball.draw(g);
-        for (int i = 0; i < MAX_BRICKS; i++) {
-            if (brick[i] != null) {
-                brick[i].draw(g);
+        if (gameState != gameOverState) {
+            paddle1.draw(g);
+            ball.draw(g);
+            for (int i = 0; i < MAX_BRICKS; i++) {
+                if (brick[i] != null) {
+                    brick[i].draw(g);
+                }
             }
+        } else {
+            graphics.setColor(Color.white);
+            graphics.setFont(new Font("Arial", Font.BOLD, 64));
+
+            String text = "Game Over";
+            graphics.drawString(text, SCREEN_SIZE.width/2-150, SCREEN_SIZE.height/2 );
         }
+
     }
     public void move() {
         paddle1.move();
@@ -113,7 +131,14 @@ public class GamePanel extends JPanel implements Runnable {
                     ball.setXDirection(ball.xVelocity);
                     ball.setYDirection(ball.yVelocity);
                     brick[i] = null;
-                }
+                } /*else {
+                    int randomX = random.nextInt(3);
+                    randomX--;
+                    int randomY = random.nextInt(3);
+                    randomY--;
+                    brick[i].x += randomX;
+                    brick[i].y += randomY;
+                }*/
             }
         }
 
@@ -123,11 +148,8 @@ public class GamePanel extends JPanel implements Runnable {
         if (paddle1.x >= GAME_WIDTH -PADDLE_WIDTH) {
             paddle1.x = GAME_WIDTH-PADDLE_WIDTH;}
 
-        //give a player 1 point and creates new paddles & ball
         if(ball.y >= GAME_HEIGHT) {
-
-            newPaddle();
-            newBall();
+            gameOver();
             System.out.println("OUT!");
         }
 //        if(ball.x >= GAME_WIDTH-BALL_DIAMETER) {
@@ -137,6 +159,11 @@ public class GamePanel extends JPanel implements Runnable {
 //            System.out.println(score.player1);
 //        }
     }
+
+    private void gameOver() {
+        gameState = gameOverState;
+    }
+
     @Override
     public void run(){
         //game loop
@@ -144,17 +171,23 @@ public class GamePanel extends JPanel implements Runnable {
         double amountOfTick = 60.0;
         double ns = 1000000000 / amountOfTick;
         double delta = 0;
+        gameState = playState;
 
         while (true) {
-            long now = System.nanoTime();
-            delta += (now - lastTime)/ns;
-            lastTime = now;
-            if (delta >= 1){
-                move();
-                checkCollision();
-                repaint();
-                delta--;
+            if (gameState == gameOverState && enterPressed) {
+                newGame();
             }
+                long now = System.nanoTime();
+                delta += (now - lastTime)/ns;
+                lastTime = now;
+                if (delta >= 1) {
+                    if (gameState != gameOverState) {
+                        move();
+                        checkCollision();
+                    }
+                    repaint();
+                    delta--;
+                }
         }
     }
     public class AL extends KeyAdapter {
@@ -162,12 +195,20 @@ public class GamePanel extends JPanel implements Runnable {
         public void keyPressed(KeyEvent e) {
             super.keyPressed(e);
             paddle1.keyPressed(e);
+
+            if (e.getKeyCode()==KeyEvent.VK_ENTER) {
+                enterPressed = true;
+            }
         }
 
         @Override
         public void keyReleased(KeyEvent e) {
             super.keyReleased(e);
             paddle1.keyReleased(e);
+
+            if (e.getKeyCode()==KeyEvent.VK_ENTER) {
+              enterPressed = false;
+            }
         }
     }
 }
